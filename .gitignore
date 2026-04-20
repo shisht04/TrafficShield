@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# C++ builds
+*.exe
+*.o
+*.out
+
+# Sensitive / generated data
+report.json
+output_filtered.pcap
+*.pcap
+
+# Logs
+*.log
+
+# Environment / secrets
+.env
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DPI Security Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  /* ── Reset & Base ─────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #050c12;
+    --surface:   #0a1520;
+    --surface2:  #0f1e2e;
+    --border:    #1a3a52;
+    --accent:    #00d4ff;
+    --accent2:   #00ff88;
+    --danger:    #ff4560;
+    --warning:   #ffb400;
+    --text:      #cde4f0;
+    --muted:     #4a7a9b;
+    --font-mono: 'Share Tech Mono', monospace;
+    --font-ui:   'Rajdhani', sans-serif;
+  }
+
+  html { font-size: 16px; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-weight: 500;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,212,255,.015) 2px,
+      rgba(0,212,255,.015) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ── Header ───────────────────────────────────────────────────── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    animation: pulse 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: .6; }
+  }
+
+  .logo h1 {
+    font-size: 1.3rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .logo h1 span { color: var(--accent2); }
+
+  .header-meta {
+    font-family: var(--font-mono);
+    font-size: .75rem;
+    color: var(--muted);
+    text-align: right;
+    line-height: 1.6;
+  }
+
+  .status-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent2);
+    margin-right: 6px;
+    animation: blink 1.5s step-end infinite;
+  }
+
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+
+  /* ── Layout ───────────────────────────────────────────────────── */
+  main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1.5rem 2rem 3rem;
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 1rem;
+  }
+
+  /* ── Cards ────────────────────────────────────────────────────── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1.25rem 1.5rem;
+    position: relative;
+    overflow: hidden;
+    animation: fadein .5s ease both;
+  }
+
+  @keyframes fadein {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+  }
+
+  .card.danger::before  { background: linear-gradient(90deg, var(--danger), transparent); }
+  .card.success::before { background: linear-gradient(90deg, var(--accent2), transparent); }
+  .card.warning::before { background: linear-gradient(90deg, var(--warning), transparent); }
+
+  .card-label {
+    font-family: var(--font-mono);
+    font-size: .65rem;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: .4rem;
+  }
+
+  .card-value {
+    font-size: 2.2rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--accent);
+    font-family: var(--font-mono);
+  }
+
+  .card.danger  .card-value { color: var(--danger); }
+  .card.success .card-value { color: var(--accent2); }
+  .card.warning .card-value { color: var(--warning); }
+
+  .card-sub {
+    font-size: .8rem;
+    color: var(--muted);
+    margin-top: .4rem;
+  }
+
+  .card-title {
+    font-size: .9rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--accent);
+    margin-bottom: 1rem;
+    font-family: var(--font-mono);
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+
+  .card-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Grid placement ───────────────────────────────────────────── */
+  .col-3  { grid-column: span 3; }
+  .col-4  { grid-column: span 4; }
+  .col-5  { grid-column: span 5; }
+  .col-6  { grid-column: span 6; }
+  .col-7  { grid-column: span 7; }
+  .col-8  { grid-column: span 8; }
+  .col-12 { grid-column: span 12; }
+
+  /* ── Stat cards row ───────────────────────────────────────────── */
+  .stat-grid {
+    grid-column: span 12;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 1rem;
+  }
+
+  /* ── Chart wrappers ───────────────────────────────────────────── */
+  .chart-wrap {
+    position: relative;
+    height: 260px;
+  }
+
+  /* ── Table ────────────────────────────────────────────────────── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .85rem;
+  }
+
+  thead th {
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: .65rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: .5rem .75rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  tbody tr {
+    border-bottom: 1px solid rgba(26,58,82,.4);
+    transition: background .15s;
+  }
+
+  tbody tr:hover { background: rgba(0,212,255,.04); }
+
+  td {
+    padding: .55rem .75rem;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: .8rem;
+  }
+
+  /* ── Badge ────────────────────────────────────────────────────── */
+  .badge {
+    display: inline-block;
+    padding: .1rem .5rem;
+    border-radius: 2px;
+    font-size: .65rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+  }
+
+  .badge-block   { background: rgba(255,69,96,.15);  color: var(--danger);  border: 1px solid rgba(255,69,96,.3); }
+  .badge-pass    { background: rgba(0,255,136,.1);   color: var(--accent2); border: 1px solid rgba(0,255,136,.3); }
+  .badge-unknown { background: rgba(74,122,155,.15); color: var(--muted);   border: 1px solid rgba(74,122,155,.3); }
+
+  /* ── Alert log ────────────────────────────────────────────────── */
+  .alert-list { list-style: none; display: flex; flex-direction: column; gap: .5rem; }
+
+  .alert-item {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    background: rgba(255,69,96,.06);
+    border: 1px solid rgba(255,69,96,.2);
+    border-left: 3px solid var(--danger);
+    padding: .6rem .9rem;
+    border-radius: 2px;
+    font-family: var(--font-mono);
+    font-size: .78rem;
+    animation: fadein .3s ease both;
+  }
+
+  .alert-icon { color: var(--danger); font-size: 1rem; }
+  .alert-value { color: var(--text); flex: 1; }
+  .alert-reason { color: var(--muted); font-size: .7rem; }
+
+  /* ── Progress bar ─────────────────────────────────────────────── */
+  .progress-list { display: flex; flex-direction: column; gap: .75rem; }
+
+  .progress-item-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: .8rem;
+    margin-bottom: .25rem;
+  }
+
+  .progress-bar-bg {
+    background: var(--surface2);
+    border-radius: 2px;
+    height: 6px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width .8s cubic-bezier(.4,0,.2,1);
+  }
+
+  .progress-bar-fill.blocked {
+    background: linear-gradient(90deg, var(--danger), #ff8500);
+  }
+
+  /* ── Protocol ring ────────────────────────────────────────────── */
+  .proto-row {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    margin-top: .5rem;
+  }
+
+  .proto-legend {
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+    flex: 1;
+  }
+
+  .proto-legend-item {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .82rem;
+  }
+
+  .proto-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── Refresh button ───────────────────────────────────────────── */
+  .refresh-btn {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: .75rem;
+    padding: .35rem .9rem;
+    border-radius: 2px;
+    cursor: pointer;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    transition: all .2s;
+  }
+
+  .refresh-btn:hover {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  /* ── Loading overlay ──────────────────────────────────────────── */
+  #loader {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 1rem;
+    z-index: 9998;
+    transition: opacity .4s;
+  }
+
+  .loader-ring {
+    width: 48px; height: 48px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loader-text {
+    font-family: var(--font-mono);
+    color: var(--muted);
+    font-size: .85rem;
+    letter-spacing: .1em;
+  }
+
+  /* ── Empty state ──────────────────────────────────────────────── */
+  .empty {
+    text-align: center;
+    padding: 2rem;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: .8rem;
+  }
+
+  /* ── Responsive ───────────────────────────────────────────────── */
+  @media (max-width: 900px) {
+    .stat-grid { grid-template-columns: repeat(3, 1fr); }
+    .col-3, .col-4, .col-5, .col-6, .col-7, .col-8 { grid-column: span 12; }
+    main { padding: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div id="loader">
+  <div class="loader-ring"></div>
+  <div class="loader-text">LOADING REPORT DATA...</div>
+</div>
+
+<!-- Header -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🛡</div>
+    <h1>DPI <span>Security</span> Dashboard</h1>
+  </div>
+  <div class="header-meta">
+    <div><span class="status-dot"></span>LIVE ANALYSIS</div>
+    <div id="header-pcap">—</div>
+    <div id="header-time">—</div>
+  </div>
+</header>
+
+<main id="app" style="display:none">
+
+  <!-- ── Stat Cards ─────────────────────────────────────────────── -->
+  <div class="stat-grid">
+    <div class="card">
+      <div class="card-label">Total Packets</div>
+      <div class="card-value" id="stat-total">—</div>
+      <div class="card-sub">captured in pcap</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Total Bytes</div>
+      <div class="card-value" id="stat-bytes">—</div>
+      <div class="card-sub">network traffic</div>
+    </div>
+    <div class="card success">
+      <div class="card-label">Forwarded</div>
+      <div class="card-value" id="stat-forwarded">—</div>
+      <div class="card-sub">packets passed</div>
+    </div>
+    <div class="card danger">
+      <div class="card-label">Dropped</div>
+      <div class="card-value" id="stat-dropped">—</div>
+      <div class="card-sub">packets blocked</div>
+    </div>
+    <div class="card warning">
+      <div class="card-label">TCP Packets</div>
+      <div class="card-value" id="stat-tcp">—</div>
+      <div class="card-sub">connection-based</div>
+    </div>
+    <div class="card">
+      <div class="card-label">UDP Packets</div>
+      <div class="card-value" id="stat-udp">—</div>
+      <div class="card-sub">connectionless</div>
+    </div>
+  </div>
+
+  <!-- ── App Breakdown Pie ───────────────────────────────────────── -->
+  <div class="card col-5">
+    <div class="card-title">Traffic by Application</div>
+    <div class="chart-wrap">
+      <canvas id="chart-pie"></canvas>
+    </div>
+  </div>
+
+  <!-- ── App Breakdown Bars ─────────────────────────────────────── -->
+  <div class="card col-7">
+    <div class="card-title">Application Breakdown</div>
+    <div class="progress-list" id="progress-list"></div>
+  </div>
+
+  <!-- ── Forwarded vs Dropped ───────────────────────────────────── -->
+  <div class="card col-5">
+    <div class="card-title">Forwarded vs Blocked</div>
+    <div class="chart-wrap">
+      <canvas id="chart-bar"></canvas>
+    </div>
+  </div>
+
+  <!-- ── Protocol Split ─────────────────────────────────────────── -->
+  <div class="card col-3">
+    <div class="card-title">Protocol Split</div>
+    <div class="proto-row">
+      <div class="chart-wrap" style="height:180px;width:180px;flex-shrink:0;">
+        <canvas id="chart-proto"></canvas>
+      </div>
+      <div class="proto-legend" id="proto-legend"></div>
+    </div>
+  </div>
+
+  <!-- ── Block Rules Fired ──────────────────────────────────────── -->
+  <div class="card col-4">
+    <div class="card-title">Block Rules Fired</div>
+    <ul class="alert-list" id="alert-list">
+      <li class="empty">No alerts</li>
+    </ul>
+  </div>
+
+  <!-- ── Detected Domains ───────────────────────────────────────── -->
+  <div class="card col-6">
+    <div class="card-title">Detected Domains / SNI</div>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Domain (SNI)</th>
+          <th>Application</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="domain-table"></tbody>
+    </table>
+  </div>
+
+  <!-- ── Raw Stats Bar Chart ────────────────────────────────────── -->
+  <div class="card col-6">
+    <div class="card-title">Per-App Packet Count</div>
+    <div class="chart-wrap">
+      <canvas id="chart-apps-bar"></canvas>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ── Colour palette ──────────────────────────────────────────────────────────
+const PALETTE = [
+  '#00d4ff','#00ff88','#ffb400','#ff4560','#7b61ff',
+  '#ff6b35','#00c9a7','#845ec2','#f9f871','#c34b4b',
+];
+
+const BLOCKED_APPS = new Set(); // filled from report
+
+// ── Fetch report ─────────────────────────────────────────────────────────────
+async function fetchReport() {
+  try {
+    const res = await fetch('/api/report');
+    if (!res.ok) throw new Error('API error');
+    return await res.json();
+  } catch (e) {
+    // If Flask is not running, use embedded demo data
+    return DEMO_REPORT;
+  }
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+async function render() {
+  const data = await fetchReport();
+
+  // Header
+  document.getElementById('header-pcap').textContent =
+    '📁 ' + (data.meta?.pcap_file || 'demo');
+  document.getElementById('header-time').textContent =
+    '🕒 ' + new Date(data.meta?.generated_at || Date.now()).toLocaleString();
+
+  const s = data.summary || {};
+
+  // Stat cards
+  setValue('stat-total',     fmt(s.total_packets));
+  setValue('stat-bytes',     fmtBytes(s.total_bytes));
+  setValue('stat-forwarded', fmt(s.forwarded));
+  setValue('stat-dropped',   fmt(s.dropped));
+  setValue('stat-tcp',       fmt(s.tcp_packets));
+  setValue('stat-udp',       fmt(s.udp_packets));
+
+  const apps = data.app_breakdown || [];
+  apps.forEach(a => { if (a.blocked) BLOCKED_APPS.add(a.name.toLowerCase()); });
+
+  // Charts
+  buildPieChart(apps);
+  buildBarChart(s);
+  buildProtoChart(s);
+  buildAppsBarChart(apps);
+  buildProgressList(apps);
+  buildAlertList(data.alerts || []);
+  buildDomainTable(data.detected_domains || [], data.alerts || []);
+
+  // Show dashboard
+  document.getElementById('loader').style.opacity = '0';
+  setTimeout(() => {
+    document.getElementById('loader').style.display = 'none';
+    document.getElementById('app').style.display = 'grid';
+  }, 400);
+}
+
+// ── Chart: Pie (app breakdown) ──────────────────────────────────────────────
+function buildPieChart(apps) {
+  const ctx = document.getElementById('chart-pie').getContext('2d');
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: apps.map(a => a.name),
+      datasets: [{
+        data: apps.map(a => a.count),
+        backgroundColor: apps.map((a, i) => a.blocked ? '#ff4560' : PALETTE[i % PALETTE.length]),
+        borderColor: '#050c12',
+        borderWidth: 2,
+        hoverOffset: 8,
+      }]
+    },
+    options: {
+      cutout: '62%',
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#4a7a9b', font: { family: 'Share Tech Mono', size: 11 }, boxWidth: 12, padding: 10 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} pkts (${apps[ctx.dataIndex]?.percent}%)` } }
+      }
+    }
+  });
+}
+
+// ── Chart: Bar (forwarded vs dropped) ──────────────────────────────────────
+function buildBarChart(s) {
+  const ctx = document.getElementById('chart-bar').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Forwarded', 'Dropped / Blocked'],
+      datasets: [{
+        data: [s.forwarded || 0, s.dropped || 0],
+        backgroundColor: ['rgba(0,255,136,.7)', 'rgba(255,69,96,.7)'],
+        borderColor:     ['#00ff88', '#ff4560'],
+        borderWidth: 1,
+        borderRadius: 3,
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#4a7a9b', font: { family: 'Share Tech Mono', size: 11 } }, grid: { color: '#0f1e2e' } },
+        y: { ticks: { color: '#4a7a9b', font: { family: 'Share Tech Mono', size: 11 } }, grid: { color: '#1a3a52' } }
+      }
+    }
+  });
+}
+
+// ── Chart: Doughnut (TCP vs UDP) ────────────────────────────────────────────
+function buildProtoChart(s) {
+  const tcp = s.tcp_packets || 0;
+  const udp = s.udp_packets || 0;
+  const other = Math.max(0, (s.total_packets || 0) - tcp - udp);
+
+  const ctx = document.getElementById('chart-proto').getContext('2d');
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['TCP', 'UDP', 'Other'],
+      datasets: [{
+        data: [tcp, udp, other],
+        backgroundColor: ['#00d4ff', '#00ff88', '#1a3a52'],
+        borderColor: '#050c12', borderWidth: 2,
+      }]
+    },
+    options: {
+      cutout: '55%',
+      plugins: { legend: { display: false } }
+    }
+  });
+
+  // Manual legend
+  const legend = document.getElementById('proto-legend');
+  const items = [
+    { label: 'TCP',   val: tcp,   color: '#00d4ff' },
+    { label: 'UDP',   val: udp,   color: '#00ff88' },
+    { label: 'Other', val: other, color: '#1a3a52' },
+  ];
+  legend.innerHTML = items.map(i => `
+    <div class="proto-legend-item">
+      <div class="proto-dot" style="background:${i.color}"></div>
+      <span style="color:#4a7a9b">${i.label}</span>
+      <span style="margin-left:auto;color:#cde4f0;font-family:'Share Tech Mono'">${fmt(i.val)}</span>
+    </div>
+  `).join('');
+}
+
+// ── Chart: Horizontal bar (per-app counts) ──────────────────────────────────
+function buildAppsBarChart(apps) {
+  const ctx = document.getElementById('chart-apps-bar').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: apps.map(a => a.name),
+      datasets: [{
+        label: 'Packets',
+        data: apps.map(a => a.count),
+        backgroundColor: apps.map((a, i) => a.blocked
+          ? 'rgba(255,69,96,.7)'
+          : hexAlpha(PALETTE[i % PALETTE.length], .7)),
+        borderColor: apps.map((a, i) => a.blocked ? '#ff4560' : PALETTE[i % PALETTE.length]),
+        borderWidth: 1,
+        borderRadius: 3,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#4a7a9b', font: { family: 'Share Tech Mono', size: 10 } }, grid: { color: '#1a3a52' } },
+        y: { ticks: { color: '#cde4f0', font: { family: 'Share Tech Mono', size: 11 } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+// ── Progress bars ────────────────────────────────────────────────────────────
+function buildProgressList(apps) {
+  const el = document.getElementById('progress-list');
+  el.innerHTML = apps.map((a, i) => `
+    <div>
+      <div class="progress-item-label">
+        <span>${a.name} ${a.blocked ? '<span class="badge badge-block">BLOCKED</span>' : ''}</span>
+        <span style="font-family:'Share Tech Mono';font-size:.75rem;color:#4a7a9b">${a.count} pkts · ${a.percent}%</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill ${a.blocked ? 'blocked' : ''}"
+             style="width:0%" data-target="${a.percent}"></div>
+      </div>
+    </div>
+  `).join('');
+
+  // Animate bars after paint
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.progress-bar-fill').forEach(bar => {
+      bar.style.width = bar.dataset.target + '%';
+    });
+  });
+}
+
+// ── Alert list ────────────────────────────────────────────────────────────────
+function buildAlertList(alerts) {
+  const el = document.getElementById('alert-list');
+  if (!alerts.length) return;
+  el.innerHTML = alerts.map(a => `
+    <li class="alert-item">
+      <span class="alert-icon">⚠</span>
+      <span class="alert-value">${a.type.toUpperCase()}: <strong>${a.value}</strong></span>
+      <span class="alert-reason">${a.reason}</span>
+    </li>
+  `).join('');
+}
+
+// ── Domain table ──────────────────────────────────────────────────────────────
+function buildDomainTable(domains, alerts) {
+  const blockedDomains = new Set(
+    alerts.filter(a => a.type === 'domain').map(a => a.value.toLowerCase())
+  );
+  const blockedAppNames = new Set(
+    alerts.filter(a => a.type === 'app').map(a => a.value.toLowerCase())
+  );
+
+  const el = document.getElementById('domain-table');
+  if (!domains.length) {
+    el.innerHTML = '<tr><td colspan="4" class="empty">No domains detected</td></tr>';
+    return;
+  }
+
+  el.innerHTML = domains.map((d, i) => {
+    const isBlocked = blockedDomains.has(d.domain.toLowerCase()) ||
+                      BLOCKED_APPS.has(d.app.toLowerCase()) ||
+                      blockedAppNames.has(d.app.toLowerCase());
+    return `
+      <tr>
+        <td style="color:#1a3a52">${String(i+1).padStart(2,'0')}</td>
+        <td style="color:#00d4ff">${d.domain}</td>
+        <td>${d.app}</td>
+        <td><span class="badge ${isBlocked ? 'badge-block' : 'badge-pass'}">${isBlocked ? 'BLOCKED' : 'PASSED'}</span></td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function setValue(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function fmt(n) { return n != null ? Number(n).toLocaleString() : '—'; }
+
+function fmtBytes(n) {
+  if (!n) return '—';
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n/1024).toFixed(1) + ' KB';
+  return (n/1048576).toFixed(2) + ' MB';
+}
+
+function hexAlpha(hex, alpha) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// ── Embedded Demo Data (used when Flask not running) ─────────────────────────
+const DEMO_REPORT = {
+  meta: { pcap_file: "test_dpi.pcap", generated_at: new Date().toISOString() },
+  summary: { total_packets:120, total_bytes:95400, tcp_packets:104, udp_packets:16, forwarded:97, dropped:23 },
+  app_breakdown: [
+    {name:"HTTPS",   count:45, percent:37.5, blocked:false},
+    {name:"YouTube", count:22, percent:18.3, blocked:true},
+    {name:"Google",  count:18, percent:15.0, blocked:false},
+    {name:"Facebook",count:14, percent:11.7, blocked:true},
+    {name:"DNS",     count:10, percent:8.3,  blocked:false},
+    {name:"Unknown", count:7,  percent:5.8,  blocked:false},
+    {name:"GitHub",  count:4,  percent:3.3,  blocked:false},
+  ],
+  detected_domains: [
+    {domain:"www.youtube.com",   app:"YouTube"},
+    {domain:"www.facebook.com",  app:"Facebook"},
+    {domain:"www.google.com",    app:"Google"},
+    {domain:"github.com",        app:"GitHub"},
+    {domain:"dns.google",        app:"DNS"},
+    {domain:"api.instagram.com", app:"Instagram"},
+  ],
+  alerts: [
+    {type:"app",    value:"YouTube",  reason:"matched block rule"},
+    {type:"app",    value:"Facebook", reason:"matched block rule"},
+    {type:"domain", value:"tiktok",   reason:"matched block rule"},
+  ],
+};
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
