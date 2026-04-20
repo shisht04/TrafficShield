@@ -1,10 +1,10 @@
-# 🛡️ TrafficShield — Network Traffic Analyzer & Security Dashboard
+#  TrafficShield — Network Traffic Analyzer & Security Dashboard
 
 A cybersecurity project that performs **Deep Packet Inspection (DPI)** on network traffic captures (`.pcap` files) and visualizes the results through an interactive web dashboard.
 
 ---
 
-## 📌 What It Does
+##  What It Does
 
 Modern networks carry traffic from hundreds of applications simultaneously. TrafficShield answers:
 
@@ -14,7 +14,7 @@ The system reads a `.pcap` file, inspects each packet deep into its payload, ide
 
 ---
 
-## 🏗️ Architecture
+##  Architecture
 
 ```
 .pcap file
@@ -39,18 +39,18 @@ Web Dashboard  (dashboard/index.html)
 
 ---
 
-## ✨ Features
+##  Features
 
-- 🔍 **Deep Packet Inspection** — inspects beyond headers into packet payloads
-- 🔐 **TLS SNI Extraction** — identifies HTTPS destinations even through encryption
-- 📊 **Traffic Classification** — detects YouTube, Facebook, Google, DNS, and more
-- 🚫 **Packet Blocking** — drops traffic by app, domain, or source IP
-- 🌐 **Web Dashboard** — interactive charts for traffic breakdown, blocked packets, top domains
-- 📁 **PCAP Output** — filtered traffic saved as a new `.pcap` for further analysis
+-  **Deep Packet Inspection** — inspects beyond headers into packet payloads
+-  **TLS SNI Extraction** — identifies HTTPS destinations even through encryption
+-  **Traffic Classification** — detects YouTube, Facebook, Google, DNS, and more
+-  **Packet Blocking** — drops traffic by app, domain, or source IP
+-  **Web Dashboard** — interactive charts for traffic breakdown, blocked packets, top domains
+-  **PCAP Output** — filtered traffic saved as a new `.pcap` for further analysis
 
 ---
 
-## 📁 Repo Structure
+##  Repo Structure
 
 ```
 TrafficShield/
@@ -67,7 +67,7 @@ TrafficShield/
 
 ---
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### Prerequisites
 - Python 3.8+
@@ -102,7 +102,7 @@ Open your browser at `http://localhost:5000`
 
 ---
 
-## 📊 Dashboard Panels
+##  Dashboard Panels
 
 | Panel | Description |
 |---|---|
@@ -115,7 +115,7 @@ Open your browser at `http://localhost:5000`
 
 ---
 
-## 🔬 How DPI Works
+##  How DPI Works
 
 ### SNI Extraction
 Even HTTPS traffic leaks the destination domain. The **TLS Client Hello** — sent before encryption starts — contains the domain in plaintext:
@@ -131,7 +131,7 @@ Once a connection is identified (e.g. YouTube), all subsequent packets of that f
 
 ---
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 | Layer | Technology |
 |---|---|
@@ -143,6 +143,7 @@ Once a connection is identified (e.g. YouTube), all subsequent packets of that f
 
 ---
 
-## 📄 License
+##  License
 
-This project is for educational purposes.
+This project is for educational purposes, made by Shisht Tiwari.
+Do Star it if you find it useful<33
